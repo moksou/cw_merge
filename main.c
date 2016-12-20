@@ -18,14 +18,18 @@ int main(int argc, char* argv[])
 //    regcomp(&rxp_map, "MAP[0-9]{2}|E[0-9]M[0-9]", REG_EXTENDED);
 
     if (argc < 3) {
-        fprintf(stderr, "usage: %s [wad 1] [wad 2]\n", argv[0]);
+        fprintf(stderr, "usage: %s source_wad_1 ... source_wad_n destination_wad\n", argv[0]);
         return 1;
     }
     for (int i = 0; i < wadnum - 1; i++)
-        if ((wads[i] = w_open(argv[i + 1])) == NULL)
+        if ((wads[i] = w_open(argv[i + 1])) == NULL) {
+            fprintf(stderr, "%s: couldn't open wad %s\n", argv[0], argv[i + 1]);
             return 1;
-    if ((wads[wadnum - 1] = w_create(argv[wadnum])) == NULL)
+        }
+    if ((wads[wadnum - 1] = w_create(argv[wadnum])) == NULL) {
+        fprintf(stderr, "%s: couldn't create destination wad %s\n", argv[0], argv[wadnum]);
         return 1;
+    }
 
     for (int i = 0; i < wadnum - 1; i++)
         for (int j = 0; j < wads[i]->lumpCount; j++) {
