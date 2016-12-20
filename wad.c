@@ -1,7 +1,6 @@
 #include "globaldefs.h"
 #include "wad.h"
 
-#include <regex.h>
 
 /* wad functions */
 
@@ -35,11 +34,8 @@ wad_t* w_open(const char* path)
         return NULL;
     }
 
-    fseek(wadfile->fd, dirPos, SEEK_SET);
-    for (int i = 0; i < wadfile->lumpCount; i++) {
-        fread(&wadfile->dir[i], 16, 1, wadfile->fd);
-        wadfile->dir[i].buffer = NULL;
-    }
+    w_loadtable(wadfile, dirPos);
+
     return wadfile;
 }
 
@@ -52,7 +48,6 @@ void w_close(wad_t* wadfile)
     wadfile->dir = NULL;
     wadfile = NULL;
 }
-
 
 wad_t* w_create(const char* path)
 {
@@ -69,6 +64,43 @@ wad_t* w_create(const char* path)
     return wadfile;
 }
 
+int w_loadtable(wad_t* wadfile, int32_t dirPos)
+{
+    fseek(wadfile->fd, dirPos, SEEK_SET);
+    for (int i = 0; i < wadfile->lumpCount; i++) {
+        lump_t* entry = &wadfile->dir[i];
+
+        fread(entry, ENTRY_SIZE, 1, wadfile->fd);
+        entry->buffer = NULL;
+        entry->type = 0;
+    }
+
+    for (int i = 0; i < wadfile->lumpCount; i++) {
+        lump_t* entry = &wadfile->dir[i];
+
+        if (t_ismap(entry)) {
+            entry->type = MARKER;
+            for (int j = ++i, type = THINGS; j < i + 10; j++, type++)
+                wadfile->dir[j].type = t;
+            i += 11;
+        } else if (t_isflag(entry)) {
+            entry->type = MARKER;
+            int apptype = t_flagtype(entry);
+
+            for (int j = ++i; t_isflag(&wadfile->dir[j]) != 2; j++, i++) {
+                wadfile->dir[j].type = apptype;
+                wadfile->dir[j + 1].type = MARKER;
+            }
+        } else if (!strncmp(entry->name, "TEXTURE", 7)) {
+            entry->type = TEXTUREx;
+        } else if (!strncmp(entry->name, "PNAMES", 8)) {
+            entry->type = PNAMES;
+        } else if (entry->size == 0) {
+            entry->type = MARKER;
+        }
+    }
+}
+
 int w_updateheader(wad_t* wadfile, int32_t dirPos)
 {
     fseek(wadfile->fd, 0, SEEK_SET);
@@ -81,16 +113,13 @@ int w_updateheader(wad_t* wadfile, int32_t dirPos)
 int w_mktable(wad_t* wadfile)
 {
     fseek(wadfile->fd, 0, SEEK_END);
-    for (int i = 0; i < wadfile->lumpCount; i++) {
-        fwrite(&wadfile->dir[i].pos, 4, 1, wadfile->fd);
-        fwrite(&wadfile->dir[i].size, 4, 1, wadfile->fd);
-        fwrite(&wadfile->dir[i].name, 8, 1, wadfile->fd);
-        fseek(wadfile->fd, 0, SEEK_END);
-    }
+    for (int i = 0; i < wadfile->lumpCount; i++)
+        fwrite(&wadfile->dir[i], ENTRY_SIZE, 1, wadfile->fd);
     return 0;
 }
 
 /* wad table functions */
+
 
 int t_getindex(wad_t* wadfile, char name[8])
 {
@@ -112,8 +141,9 @@ int t_push(wad_t* wadfile, lump_t* entry)
 
     fseek(wadfile->fd, 0, SEEK_END);
     wadfile->dir[wadfile->lumpCount].pos = ftell(wadfile->fd);
-    l_write(wadfile, &wadfile->dir[wadfile->lumpCount]);
-    fseek(wadfile->fd, 0, SEEK_END);
+
+    if(entry->size)
+        l_write(wadfile, &wadfile->dir[wadfile->lumpCount]);
 
     wadfile->lumpCount++;
     dirPos = ftell(wadfile->fd);
@@ -141,15 +171,32 @@ int t_exists(wad_t* wadfile, lump_t* entry)
 
 int t_ismap(lump_t* entry)
 {
-    regex_t rxp;
-
-    regcomp(&rxp, "MAP[0-9]{2}|E[0-9]M[0-9]", REG_EXTENDED);
-    if (regexec(&rxp, entry->name, (size_t) 0, NULL, 0) == REG_NOERROR) {
-        regfree(&rxp);
+    if (strncmp(entry->name, "MAP", 3) == 0 ||
+            (entry->name[0] == 'E' && entry->name[2] == 'M'))
         return 1;
-    }
-    regfree(&rxp);
     return 0;
+}
+
+int t_isflag(lump_t* entry)
+{
+    if (strstr(entry->name, "_START") != NULL)
+        return 1;
+    if (strstr(entry->name, "_END") != NULL)
+        return 2;
+    return 0;
+}
+
+int t_flagtype(lump_t* entry)
+{
+    switch (entry->name[0]) {
+    case 'P':
+        return PATCH;
+    case 'F':
+        return FLAT;
+    case 'S':
+        return SPRITE;
+    }
+    return UNDEFINED;
 }
 
 void t_rename(lump_t* entry, const char* newname)
@@ -193,3 +240,15 @@ void l_unload(lump_t* lump)
     free(lump->buffer);
     lump->buffer = NULL;
 }
+
+//char* l_getusedtextures(lump_t* target)
+//{
+//    sidedef_t* src = (sidedef_t*)target->buffer;
+//    int amount = src / 30;
+//    char* tlist;
+//
+//    if ((tlist = (sidedef_t*)malloc(sizeof(sidedef_t))) == NULL)
+//        return NULL;
+//    for (int i )
+//
+//}

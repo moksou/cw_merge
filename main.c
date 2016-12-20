@@ -20,30 +20,35 @@ int main(int argc, char* argv[])
         fprintf(stderr, "%s: couldn't create destination wad %s\n", argv[0], argv[wadnum]);
         return 1;
     }
+//    printtable(wads[0]);
 
     for (int i = 0; i < wadnum - 1; i++)
         for (int j = 0; j < wads[i]->lumpCount; j++) {
             lump_t* op = &wads[i]->dir[j];
-
             l_load(wads[i], op);
 
-            if (!t_exists(wads[wadnum - 1], op)) {
-                t_push(wads[wadnum - 1], op);
-            } else {
-                if (t_ismap(op)) {
-                    for (int m = j; m <= j + 10; m++, j++)
-                        t_push(wads[wadnum - 1], &wads[i]->dir[m]);
+            if (t_ismap(op)) {
+                for (int m = j++; m < j + 10; m++) {
+                    l_load(wads[i], &wads[i]->dir[m]);
+                    t_push(wads[wadnum - 1], &wads[i]->dir[m]);
+                    l_unload(&wads[i]->dir[m]);
                 }
+                j += 11;
+            } else {
+                t_push(wads[wadnum - 1], &wads[i]->dir[j]);
+                l_unload(op);
             }
-            l_unload(op);
         }
-
-    for (int i = 0; i < wads[wadnum - 1]->lumpCount; i++)
-        printf("%4d ===%.8s\n", i, wads[wadnum - 1]->dir[i].name);
-
     w_mktable(wads[wadnum - 1]);
+    printtable(wads[wadnum - 1]);
 
     for (int i = 0; i < wadnum; i++)
         w_close(wads[i]);
     return 0;
+}
+
+void printtable(wad_t* wadfile)
+{
+    for (int i = 0; i < wadfile->lumpCount; i++)
+        fprintf(stdout, "%3d %9.8s\n", wadfile->dir[i].type, wadfile->dir[i].name);
 }

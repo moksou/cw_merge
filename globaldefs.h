@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
+#include <malloc.h>
 
 #define LPOS_LENGTH  4
 #define LSIZE_LENGTH 4
 #define LNAME_LENGTH 8
 
-#define DIR_ENTRY_SIZE 16
+#define ENTRY_SIZE 16
 
 #define THING_BYTE_SIZE   10
 #define LINEDEF_BYTE_SIZE 14
@@ -31,6 +33,7 @@ typedef struct
     int32_t      pos, size;
     char         name[8];
     char*        buffer;
+    int          type;
 } lump_t;
 
 typedef struct
@@ -83,3 +86,23 @@ typedef struct
                  middle[8];
     int16_t      face_id;
 } sidedef_t;
+
+enum {
+    UNDEFINED,
+    MARKER,
+    THINGS,
+    LINEDEFS,
+    SIDEDEFS,
+    VERTEXES,
+    SEGS,
+    SSECTORS,
+    NODES,
+    SECTORS,
+    REJECT,
+    BLOCKMAP,
+    TEXTUREx,
+    PNAMES,
+    PATCH,
+    FLAT,
+    SPRITE
+};
