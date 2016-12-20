@@ -1,11 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <regex.h>
-
 #include "globaldefs.h"
 #include "wad.h"
+
+#include <regex.h>
+
+/* wad functions */
 
 wad_t* w_open(const char* path)
 {
@@ -91,7 +89,8 @@ int w_mktable(wad_t* wadfile)
     }
     return 0;
 }
-/* Table functions */
+
+/* wad table functions */
 
 int t_getindex(wad_t* wadfile, char name[8])
 {
@@ -158,20 +157,7 @@ void t_rename(lump_t* entry, const char* newname)
     strncpy(entry->name, newname, 8);
 }
 
-
-//int l_create(wad_t* wadfile)
-//{
-//    lump_t newlump;
-//
-//    newlump.buffer = NULL;
-//    newlump.pos = 0;
-//    newlump.size = 0;
-//    strncpy(newlump.name, "UNNAMED", 7);
-//
-//    t_push(wadfile, newlump);
-//
-//    return 0;
-//}
+/* lump low-level functions */
 
 int l_load(wad_t* wadfile, lump_t* lump)
 {

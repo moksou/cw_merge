@@ -1,21 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-//#include <regex.h>
-
 #include "globaldefs.h"
 #include "wad.h"
-
 
 
 int main(int argc, char* argv[])
 {
     int wadnum = argc - 1;
     wad_t* wads[wadnum];
-
-//    regex_t rxp_map;
-
-//    regcomp(&rxp_map, "MAP[0-9]{2}|E[0-9]M[0-9]", REG_EXTENDED);
 
     if (argc < 3) {
         fprintf(stderr, "usage: %s source_wad_1 ... source_wad_n destination_wad\n", argv[0]);
