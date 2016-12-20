@@ -80,8 +80,8 @@ int w_loadtable(wad_t* wadfile, int32_t dirPos)
 
         if (t_ismap(entry)) {
             entry->type = MARKER;
-            for (int j = ++i, type = THINGS; j < i + 10; j++, type++)
-                wadfile->dir[j].type = t;
+            for (int j = ++i, apptype = THINGS; j < i + 10; j++, apptype++)
+                wadfile->dir[j].type = apptype;
             i += 11;
         } else if (t_isflag(entry)) {
             entry->type = MARKER;
