@@ -5,6 +5,7 @@
 #include <regex.h>
 
 #include "globaldefs.h"
+#include "wad.h"
 
 wad_t* w_open(const char* path)
 {
@@ -44,6 +45,17 @@ wad_t* w_open(const char* path)
     return wadfile;
 }
 
+void w_close(wad_t* wadfile)
+{
+    fclose(wadfile->fd);
+    free(wadfile->dir);
+    free(wadfile);
+    wadfile->fd = NULL;
+    wadfile->dir = NULL;
+    wadfile = NULL;
+}
+
+
 wad_t* w_create(const char* path)
 {
     wad_t* wadfile;
@@ -65,6 +77,7 @@ int w_updateheader(wad_t* wadfile, int32_t dirPos)
     fwrite(wadfile->type, 4, 1, wadfile->fd);
     fwrite(&wadfile->lumpCount, 4, 1, wadfile->fd);
     fwrite(&dirPos, 4, 1, wadfile->fd);
+    return 0;
 }
 
 int w_mktable(wad_t* wadfile)
@@ -80,7 +93,7 @@ int w_mktable(wad_t* wadfile)
 }
 /* Table functions */
 
-unsigned int t_getindex(wad_t* wadfile, char name[8])
+int t_getindex(wad_t* wadfile, char name[8])
 {
     for (int i = 0; i < wadfile->lumpCount; i++)
         if (strncmp(name, wadfile->dir[i].name, 8) == 0)
@@ -193,14 +206,4 @@ void l_unload(lump_t* lump)
         return;
     free(lump->buffer);
     lump->buffer = NULL;
-}
-
-void w_close(wad_t* wadfile)
-{
-    fclose(wadfile->fd);
-    free(wadfile->dir);
-    free(wadfile);
-    wadfile->fd = NULL;
-    wadfile->dir = NULL;
-    wadfile = NULL;
 }
