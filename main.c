@@ -7,6 +7,8 @@ int main(int argc, char* argv[])
     int wadnum = argc - 1;
     wad_t* wads[wadnum];
 
+    int mapnum = 0;
+
     if (argc < 3) {
         fprintf(stderr, "usage: %s source_wad_1 ... source_wad_n destination_wad\n", argv[0]);
         return 1;
@@ -25,18 +27,14 @@ int main(int argc, char* argv[])
     for (int i = 0; i < wadnum - 1; i++)
         for (int j = 0; j < wads[i]->lumpCount; j++) {
             lump_t* op = &wads[i]->dir[j];
-            l_load(wads[i], op);
 
             if (t_ismap(op)) {
-                for (int m = j++; m < j + 10; m++) {
-                    l_load(wads[i], &wads[i]->dir[m]);
-                    t_push(wads[wadnum - 1], &wads[i]->dir[m]);
-                    l_unload(&wads[i]->dir[m]);
-                }
+                m_setnum(op, ++mapnum);
+                for (int maplump = j; maplump < j + BLOCKMAP; maplump++)
+                    c_copy(wads[wadnum - 1], wads[i], &wads[i]->dir[maplump]);
                 j += 11;
-            } else {
-                t_push(wads[wadnum - 1], &wads[i]->dir[j]);
-                l_unload(op);
+            } else if (!t_exists(wads[wadnum - 1], op)) {
+                c_copy(wads[wadnum - 1], wads[i], op);
             }
         }
     w_mktable(wads[wadnum - 1]);

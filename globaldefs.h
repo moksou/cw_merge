@@ -1,7 +1,7 @@
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 #include <malloc.h>
 
 #define LPOS_LENGTH  4
@@ -88,7 +88,7 @@ typedef struct
 } sidedef_t;
 
 enum {
-    UNDEFINED,
+    UNDEFINED = 0,
     MARKER,
     THINGS,
     LINEDEFS,
