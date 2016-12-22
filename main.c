@@ -1,8 +1,6 @@
 #include "globaldefs.h"
 #include "wad.h"
 
-#include "mus.c"
-
 
 
 int main(int argc, char* argv[])
