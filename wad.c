@@ -1,6 +1,41 @@
 #include "globaldefs.h"
 #include "wad.h"
 
+extern const char* mus_order[] = {
+    "D_RUNNIN",
+    "D_STALKS",
+    "D_COUNTD",
+    "D_BETWEE",
+    "D_DOOM",
+    "D_THE_DA",
+    "D_SHAWN",
+    "D_DDTBLU",
+    "D_IN_CIT",
+    "D_DEAD",
+    "D_STLKS2",
+    "D_THEDA2",
+    "D_DOOM2",
+    "D_DDTBL2",
+    "D_RUNNI2",
+    "D_DEAD2",
+    "D_STLKS3",
+    "D_ROMERO",
+    "D_SHAWN2",
+    "D_MESSAG",
+    "D_COUNT2",
+    "D_DDTBL3",
+    "D_AMPIE",
+    "D_THEDA3",
+    "D_ADRIAN",
+    "D_MESSG2",
+    "D_ROMER2",
+    "D_TENSE",
+    "D_SHAWN3",
+    "D_OPENIN",
+    "D_EVIL",
+    "D_ULTIMA"
+};
+
 
 /* wad functions */
 
@@ -82,7 +117,7 @@ int w_loadtable(wad_t* wadfile, int32_t dirPos)
             entry->type = MARKER;
             for (int j = ++i, apptype = THINGS; j < i + 10; j++, apptype++)
                 wadfile->dir[j].type = apptype;
-            i += 11;
+            i += BLOCKMAP;
         } else if (t_isflag(entry)) {
             entry->type = MARKER;
             int apptype = t_flagtype(entry);
@@ -99,6 +134,7 @@ int w_loadtable(wad_t* wadfile, int32_t dirPos)
             entry->type = MARKER;
         }
     }
+    return 0;
 }
 
 int w_updateheader(wad_t* wadfile, int32_t dirPos)
@@ -120,15 +156,6 @@ int w_mktable(wad_t* wadfile)
 
 /* wad table functions */
 
-
-int t_getindex(wad_t* wadfile, char name[8])
-{
-    for (int i = 0; i < wadfile->lumpCount; i++)
-        if (strncmp(name, wadfile->dir[i].name, 8) == 0)
-            return i;
-    return 0;
-}
-
 int t_push(wad_t* wadfile, lump_t* entry)
 {
     int dirPos;
@@ -138,27 +165,11 @@ int t_push(wad_t* wadfile, lump_t* entry)
         return 1;
     }
     wadfile->dir[wadfile->lumpCount] = *entry;
-
     wadfile->lumpCount++;
+    fseek(wadfile->fd, 0, SEEK_END);
+    dirPos = ftell(wadfile->fd);
     w_updateheader(wadfile, dirPos);
 
-    return 0;
-}
-
-int c_copy(wad_t* dst, wad_t* src, lump_t* entry)
-{
-    lump_t newentry;
-
-    newentry = *entry;
-
-    fseek(dst->fd, 0, SEEK_END);
-    newentry.pos = ftell(dst->fd);
-    if (l_load(src, entry) == 0 &&
-            l_write(dst, entry) != 0) {
-        t_push(dst, &newentry);
-        l_unload(entry);
-        return 1;
-    }
     return 0;
 }
 
@@ -166,7 +177,7 @@ int t_compare(lump_t* left, lump_t* right)
 {
     if (left->size == right->size &&
             strncmp(left->name, right->name, 8) == 0) {
-        return l_compare(left, right);
+        return 0;
     }
     return 1;
 }
@@ -174,7 +185,7 @@ int t_compare(lump_t* left, lump_t* right)
 int t_exists(wad_t* wadfile, lump_t* entry)
 {
     if (entry->size == 0)
-        return 1;
+        return 0;
     for (int i = 0; i < wadfile->lumpCount; i++)
         if (t_compare(entry, &wadfile->dir[i]) == 0)
             return 1;
@@ -185,7 +196,7 @@ int t_ismap(lump_t* entry)
 {
     if (strncmp(entry->name, "MAP", 3) == 0 ||
             (entry->name[0] == 'E' && entry->name[2] == 'M'))
-        return 1;
+        return strtol(&entry->name[3], &entry->name[7], 10);
     return 0;
 }
 
@@ -195,6 +206,14 @@ int t_isflag(lump_t* entry)
         return 1;
     if (strstr(entry->name, "_END") != NULL)
         return 2;
+    return 0;
+}
+
+int t_ismus(lump_t* entry)
+{
+    for (int i = 0; i < 32; i++)
+        if (strncmp(entry->name, mus_order[i], 8) == 0)
+            return i + 1;
     return 0;
 }
 
@@ -211,17 +230,20 @@ int t_flagtype(lump_t* entry)
     return UNDEFINED;
 }
 
-void t_rename(lump_t* entry, const char* newname)
+int m_setnum(lump_t* entry, int32_t num)
 {
-    strncpy(entry->name, newname, 8);
+    if (strncmp(entry->name, "MAP", 3) == 0) {
+        sprintf(entry->name, "MAP%.2d", num);
+        return 0;
+    }
+    return 1;
 }
 
-//int t_swap(wad_t* wadfile, lump_t* target)
-//{
-//    for (int i = 0; i < wadfile->lumpCount; i++) {
-//        if ()
-//    }
-//}
+void m_setmus(lump_t* entry, int32_t num)
+{
+    sprintf(entry->name, "%.8s", mus_order[num - 1]);
+}
+
 
 /* lump low-level functions */
 
@@ -237,27 +259,31 @@ int l_load(wad_t* wadfile, lump_t* lump)
     return 0;
 }
 
-int l_compare(lump_t* left, lump_t* right)
+//int l_compare(lump_t* left, lump_t* right)
+//{
+//    if (left->buffer == NULL || right->buffer == NULL)
+//        return 0;
+//    for (int i = 0; i < left->size; i++)
+//        if (left->buffer[i] != right->buffer[i])
+//            return 1;
+//    return 0;
+//}
+
+int l_copy(wad_t* dst, wad_t* src, lump_t* entry)
 {
-    if (left->buffer == NULL || right->buffer == NULL)
-        return 0;
-    for (int i = 0; i < left->size; i++)
-        if (left->buffer[i] != right->buffer[i])
-            return 1;
+    lump_t newentry;
+
+    newentry = *entry;
+
+    fseek(dst->fd, 0, SEEK_END);
+    newentry.pos = ftell(dst->fd);
+    if (l_load(src, entry) == 0 &&
+            l_write(dst, entry) != 0) {
+        t_push(dst, &newentry);
+        l_unload(entry);
+        return 1;
+    }
     return 0;
-}
-
-int m_getnum(lump_t* entry)
-{
-    if (strncmp(entry->name, "MAP", 3) == 0)
-        return strtol(&entry->name[3], &entry->name[7], 10);
-
-}
-
-int m_setnum(lump_t* entry, int32_t num)
-{
-    if (strncmp(entry->name, "MAP", 3) == 0)
-        sprintf(entry->name, "MAP%0.2d", num);
 }
 
 int l_write(wad_t* wadfile, lump_t* target)

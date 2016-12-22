@@ -47,16 +47,17 @@ typedef struct
 
 typedef struct
 {
-    char         *things,
-                 *linedefs,
-                 *sidedefs,
-                 *vertexes,
-                 *segs,
-                 *ssectors,
-                 *nodes,
-                 *sectors,
-                 *reject,
-                 *blockmap;
+    lump_t*         *marker,
+                    *things,
+                    *linedefs,
+                    *sidedefs,
+                    *vertexes,
+                    *segs,
+                    *ssectors,
+                    *nodes,
+                    *sectors,
+                    *reject,
+                    *blockmap;
 } map_t;
 
 typedef struct
@@ -106,3 +107,6 @@ enum {
     FLAT,
     SPRITE
 };
+
+
+extern const char* mus_order[];

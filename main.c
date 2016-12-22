@@ -1,6 +1,9 @@
 #include "globaldefs.h"
 #include "wad.h"
 
+#include "mus.c"
+
+
 
 int main(int argc, char* argv[])
 {
@@ -8,8 +11,9 @@ int main(int argc, char* argv[])
     wad_t* wads[wadnum];
 
     int mapnum = 0;
+    int musnum = 0;
 
-    if (argc < 3) {
+    if (argc < 4) {
         fprintf(stderr, "usage: %s source_wad_1 ... source_wad_n destination_wad\n", argv[0]);
         return 1;
     }
@@ -24,19 +28,34 @@ int main(int argc, char* argv[])
     }
 //    printtable(wads[0]);
 
+    // first stage: just merge wads
     for (int i = 0; i < wadnum - 1; i++)
         for (int j = 0; j < wads[i]->lumpCount; j++) {
             lump_t* op = &wads[i]->dir[j];
 
             if (t_ismap(op)) {
                 m_setnum(op, ++mapnum);
+
                 for (int maplump = j; maplump < j + BLOCKMAP; maplump++)
-                    c_copy(wads[wadnum - 1], wads[i], &wads[i]->dir[maplump]);
+                    l_copy(wads[wadnum - 1], wads[i], &wads[i]->dir[maplump]);
                 j += 11;
+            } else if (t_ismus(op)) {
+                m_setmus(op, ++musnum);
+                l_copy(wads[wadnum - 1], wads[i], op);
             } else if (!t_exists(wads[wadnum - 1], op)) {
-                c_copy(wads[wadnum - 1], wads[i], op);
+                l_copy(wads[wadnum - 1], wads[i], op);
             }
         }
+
+    // second stage : group lumps
+    for (int i = 0; i < wads[wadnum - 1]->lumpCount; i++){
+        lump_t* op = &wads[wadnum - 1]->dir[i];
+        if (t_ismus(op) && t_exists(wads[wadnum - 1], op)) {
+            sprintf(op->name, "%.8s", mus_order[t_ismus(op) - 1]);
+        } else if (t_ismap(op)) {
+
+        }
+    }
     w_mktable(wads[wadnum - 1]);
     printtable(wads[wadnum - 1]);
 

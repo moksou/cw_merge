@@ -11,7 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="/home/moksou/Downloads/demblues.wad /home/moksou/Downloads/ameba_nl.wad /home/moksou/tmp/res.wad" />
+				<Option parameters="/home/moksou/tmp/9thFloor.wad /home/moksou/tmp/alostsoul.wad /home/moksou/tmp/res.wad" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
