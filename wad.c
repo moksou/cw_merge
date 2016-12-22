@@ -1,7 +1,7 @@
 #include "globaldefs.h"
 #include "wad.h"
 
-extern const char* mus_order[] = {
+const char* mus_order[] = {
     "D_RUNNIN",
     "D_STALKS",
     "D_COUNTD",
@@ -196,7 +196,7 @@ int t_ismap(lump_t* entry)
 {
     if (strncmp(entry->name, "MAP", 3) == 0 ||
             (entry->name[0] == 'E' && entry->name[2] == 'M'))
-        return strtol(&entry->name[3], &entry->name[7], 10);
+        return strtol(&entry->name[3], entry->name[7], 10);
     return 0;
 }
 

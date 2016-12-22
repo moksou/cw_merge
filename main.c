@@ -2,6 +2,7 @@
 #include "wad.h"
 
 
+void printtable(wad_t* wadfile);
 
 int main(int argc, char* argv[])
 {
@@ -64,6 +65,7 @@ int main(int argc, char* argv[])
 
 void printtable(wad_t* wadfile)
 {
+    fprintf(stdout, "%.4s with %d lumps\n", wadfile->type, wadfile->lumpCount);
     for (int i = 0; i < wadfile->lumpCount; i++)
-        fprintf(stdout, "%3d %9.8s\n", wadfile->dir[i].type, wadfile->dir[i].name);
+        fprintf(stdout, "%4d %9d %9d %9.8s\n", i + 1, wadfile->dir[i].pos, wadfile->dir[i].size, wadfile->dir[i].name);
 }
