@@ -4,10 +4,6 @@
 #include <stdint.h>
 #include <malloc.h>
 
-#define LPOS_LENGTH  4
-#define LSIZE_LENGTH 4
-#define LNAME_LENGTH 8
-
 #define ENTRY_SIZE 16
 
 #define THING_BYTE_SIZE   10
@@ -26,39 +22,25 @@
    __typeof__ (b) _b = (b); \
  _a < _b ? _a : _b; })
 
-
+typedef char str8_t[8];
 
 typedef struct
 {
     int32_t      pos, size;
-    char         name[8];
-    char*        buffer;
-    int          type;
+    str8_t       name;
+    int8_t       type;
+    void*        ref;
 } lump_t;
 
-typedef struct
-{
-    FILE*        fd;
-    char         type[4];
-    int32_t      lumpCount;
+typedef struct {
+    int32_t      total;
     lump_t*      dir;
-} wad_t;
+} wadtable_t;
 
-
-typedef struct
-{
-    lump_t*         *marker,
-                    *things,
-                    *linedefs,
-                    *sidedefs,
-                    *vertexes,
-                    *segs,
-                    *ssectors,
-                    *nodes,
-                    *sectors,
-                    *reject,
-                    *blockmap;
-} map_t;
+typedef struct {
+    int32_t      numpatches;
+    str8_t*      names;
+} pnames_t;
 
 typedef struct
 {
@@ -82,31 +64,50 @@ typedef struct
 typedef struct
 {
     int16_t      x, y;
-    char         upper[8],
-                 lower[8],
-                 middle[8];
+    str8_t       upper,
+                 lower,
+                 middle;
     int16_t      face_id;
 } sidedef_t;
 
-enum {
+
+typedef struct {
+    int16_t      originx,
+                 originy,
+                 patch,
+                 stepdir,
+                 colormap;
+} mappatch_t;
+
+typedef struct {
+    str8_t       name;
+    int16_t      masked,
+                 width,
+                 height;
+    int32_t      columndirectory;
+    int          patchcount;
+    mappatch_t*  patches;
+
+} maptexture_t;
+
+typedef struct {
+    int32_t       numtextures;
+    int32_t*      offset;
+    maptexture_t* mtexture;
+} texturex_t;
+
+enum types {
     UNDEFINED = 0,
     MARKER,
-    THINGS,
-    LINEDEFS,
-    SIDEDEFS,
-    VERTEXES,
-    SEGS,
-    SSECTORS,
-    NODES,
-    SECTORS,
-    REJECT,
-    BLOCKMAP,
+    MAP,
+    MUSIC,
+    SPRITE,
+    FLAT,
     TEXTUREx,
     PNAMES,
-    PATCH,
-    FLAT,
-    SPRITE
+    TYPESNUM
 };
 
-
-extern const char* mus_order[];
+extern const str8_t mus_order[32];
+extern const str8_t map_order[10];
+extern const str8_t flatmarkers[];

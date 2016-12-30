@@ -4017,22 +4017,28 @@
 	<stdlib.h>
 	<stdint.h>
 
-1482401782 source:/home/moksou/Cloud/Workspace/C/cw_merge/main.c
+1483112325 source:/home/moksou/Cloud/Workspace/C/cw_merge/main.c
 	"globaldefs.h"
 	"wad.h"
 
-1482396246 /home/moksou/Cloud/Workspace/C/cw_merge/globaldefs.h
+1483111236 /home/moksou/Cloud/Workspace/C/cw_merge/globaldefs.h
 	<string.h>
 	<stdio.h>
 	<stdlib.h>
 	<stdint.h>
 	<malloc.h>
 
-1482401529 /home/moksou/Cloud/Workspace/C/cw_merge/wad.h
+1483111674 /home/moksou/Cloud/Workspace/C/cw_merge/wad.h
 
-1482401839 source:/home/moksou/Cloud/Workspace/C/cw_merge/wad.c
+1483111683 source:/home/moksou/Cloud/Workspace/C/cw_merge/wad.c
 	"globaldefs.h"
 	"wad.h"
 
 1482396358 /home/moksou/Cloud/Workspace/C/cw_merge/mus.c
+
+1483110210 source:/home/moksou/Cloud/Workspace/C/cw_merge/texturex.c
+	"globaldefs.h"
+
+1483112286 source:/home/moksou/Cloud/Workspace/C/cw_merge/misc.c
+	"globaldefs.h"
 

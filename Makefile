@@ -12,7 +12,7 @@ LD = g++
 WINDRES = 
 
 INC = 
-CFLAGS = -Wall -std=c99
+CFLAGS = -Wall -std=c99 -std=gnu99
 RESINC = 
 LIBDIR = 
 LIB = 
@@ -29,7 +29,7 @@ OBJDIR_DEBUG = obj/Debug
 DEP_DEBUG = 
 OUT_DEBUG = bin/cw_merge
 
-OBJ_DEBUG = $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/wad.o
+OBJ_DEBUG = $(OBJDIR_DEBUG)/main.o $(OBJDIR_DEBUG)/misc.o $(OBJDIR_DEBUG)/texturex.o $(OBJDIR_DEBUG)/wad.o
 
 all: debug
 
@@ -48,6 +48,12 @@ out_debug: before_debug $(OBJ_DEBUG) $(DEP_DEBUG)
 
 $(OBJDIR_DEBUG)/main.o: main.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c main.c -o $(OBJDIR_DEBUG)/main.o
+
+$(OBJDIR_DEBUG)/misc.o: misc.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c misc.c -o $(OBJDIR_DEBUG)/misc.o
+
+$(OBJDIR_DEBUG)/texturex.o: texturex.c
+	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c texturex.c -o $(OBJDIR_DEBUG)/texturex.o
 
 $(OBJDIR_DEBUG)/wad.o: wad.c
 	$(CC) $(CFLAGS_DEBUG) $(INC_DEBUG) -c wad.c -o $(OBJDIR_DEBUG)/wad.o

@@ -11,7 +11,7 @@
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
-				<Option parameters="/home/moksou/tmp/9thFloor.wad /home/moksou/tmp/alostsoul.wad /home/moksou/tmp/res.wad" />
+				<Option parameters="/home/moksou/tmp/arch_tx.wad /home/moksou/tmp/demblues.wad /home/moksou/tmp/res.wad" />
 				<Compiler>
 					<Add option="-g" />
 				</Compiler>
@@ -20,9 +20,17 @@
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="-std=c99" />
+			<Add option="-std=gnu99" />
 		</Compiler>
 		<Unit filename="globaldefs.h" />
 		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="misc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="misc.h" />
+		<Unit filename="texturex.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="wad.c">

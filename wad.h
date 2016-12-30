@@ -1,23 +1,24 @@
-wad_t*      w_open(const char*);
-void        w_close(wad_t*);
-wad_t*      w_create(const char* path);
-int         w_loadtable(wad_t* wadfile, int32_t dirPos);
-int         w_updateheader(wad_t* wadfile, int32_t dirPos);
-int         w_mktable(wad_t* wadfile);
+void table_init(wadtable_t* table);
+void table_close(wadtable_t* table);
 
-int         t_getindex(wad_t* wadfile, char name[8]);
-int         t_push(wad_t* wadfile, lump_t* entry);
-int         t_compare(lump_t* left, lump_t* right);
-int         t_exists(wad_t* wadfile, lump_t* entry);
-int         t_ismap(lump_t* entry);
-int         t_isflag(lump_t* entry);
-int         t_ismus(lump_t* entry);
-int         t_flagtype(lump_t* entry);
+void t_gettable(FILE** f, wadtable_t* table);
+void t_cattable(wadtable_t* dst, wadtable_t* src, int type);
+void t_getmaps(wadtable_t* table);
+void t_getmusic(wadtable_t* table);
+void t_getrangelumps(wadtable_t* table, int apptype);
+void t_gettextures(wadtable_t* table);
 
-int         m_setnum(lump_t* entry, int32_t num);
-void        m_setmus(lump_t* entry, int32_t num);
+void t_writetopos(wadtable_t* table, lump_t* lump, int32_t pos);
+void t_push(wadtable_t* table, lump_t* lump);
 
-int         l_load(wad_t*, lump_t*);
-int         l_copy(wad_t*, wad_t*, lump_t*);
-int         l_write(wad_t* wadfile, lump_t* target);
-void        l_unload(lump_t*);
+int t_exists(wadtable_t* table, lump_t* lump);
+int t_isflag(lump_t* l);
+void t_initlump(lump_t* l, str8_t name, int32_t pos, int32_t size);
+
+void t_setmapnum(lump_t* l, int num);
+void t_setmusname(lump_t* entry, int32_t num);
+int t_isequal(lump_t* l1, lump_t* l2);
+
+char* l_load(lump_t* l);
+void l_write(FILE* fp, lump_t* l);
+void l_free(char* buffer);
