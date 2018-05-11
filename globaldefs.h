@@ -24,23 +24,17 @@
 
 typedef char str8_t[8];
 
-typedef struct
+
+typedef struct list
 {
-    int32_t      pos, size;
+    uint32_t      pos, size;
     str8_t       name;
-    int8_t       type;
-    void*        ref;
+    struct list     *next;
 } lump_t;
 
-typedef struct {
-    int32_t      total;
-    lump_t*      dir;
-} wadtable_t;
 
-typedef struct {
-    int32_t      numpatches;
-    str8_t*      names;
-} pnames_t;
+
+
 
 typedef struct
 {
@@ -79,16 +73,27 @@ typedef struct {
                  colormap;
 } mappatch_t;
 
-typedef struct {
+typedef struct t {
     str8_t       name;
     int16_t      masked,
                  width,
                  height;
     int32_t      columndirectory;
     int          patchcount;
-    mappatch_t*  patches;
+    mappatch_t   *patches;
+    struct t     *next;
 
 } maptexture_t;
+
+typedef struct {
+    int16_t     floorheight,
+                ceilingheight;
+    str8_t      floortexture,
+                ceilingtexture;
+    int16_t     light,
+                type,
+                tag;
+} mapsector_t;
 
 typedef struct {
     int32_t       numtextures;
@@ -96,16 +101,36 @@ typedef struct {
     maptexture_t* mtexture;
 } texturex_t;
 
-enum types {
-    UNDEFINED = 0,
-    MARKER,
-    MAP,
-    MUSIC,
-    SPRITE,
-    FLAT,
-    TEXTUREx,
-    PNAMES,
-    TYPESNUM
+typedef struct {
+    int32_t        num;
+    lump_t         data[10];
+    maptexture_t  *textures;
+    lump_t        *patches;
+    lump_t        *flats;
+} doomlevel_t;
+
+
+typedef struct {
+    FILE         *f;
+    char         signature[4];
+    int32_t      numlumps,
+                 offset,
+                 totalmaps;
+    lump_t       *table;
+    doomlevel_t  *maps;
+} wadfile_t;
+
+enum mapdatalumps {
+    THINGS = 0,
+    LINEDEFS,
+    SIDEDEFS,
+    VERTEXES,
+    SEGS,
+    SSECTORS,
+    NODES,
+    SECTORS,
+    REJECT,
+    BLOCKMAP
 };
 
 extern const str8_t mus_order[32];

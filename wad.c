@@ -1,5 +1,6 @@
 #include "globaldefs.h"
 #include "wad.h"
+#include "lump.h"
 
 const str8_t mus_order[32] = {
     "D_RUNNIN",
@@ -71,272 +72,206 @@ const str8_t flatmarkers[8] = {
     "FF_END"
 };
 
-void table_init(wadtable_t* table)
+wadfile_t* wad;
+
+wadfile_t *wad_load(char* filename)
 {
-    table->total = 0;
-    table->dir = NULL;
+    wad = calloc(1, sizeof(wadfile_t));
+    wad->totalmaps = 0;
+    wad->maps = NULL;
+    wad->f = fopen(filename, "rb");
+    if (wad->f == NULL) {
+        fprintf(stderr, "Couldn't open file %s\n", filename);
+        return NULL;
+    }
+
+    fread(wad->signature, 4, 1, wad->f);
+    if (strncmp(wad->signature, "IWAD", 4)
+          &&strncmp(wad->signature, "PWAD", 4)) {
+        fprintf(stderr, "File %s is not IWAD or PWAD\n", filename);
+        fclose(wad->f);
+        return NULL;
+    }
+
+    fread(&wad->numlumps, 4, 1, wad->f);
+    fread(&wad->offset, 4, 1, wad->f);
+    
+    wad_loadlumps();
+    wad_loadmaps();
+
+    for (int i = 0; i < wad->totalmaps; i++)
+        wad_getmapflats(&wad->maps[i]);
+
+    wad_printmaps();
+
+    //for (lump_t* current = wad->table; current != NULL; current = current->next) 
+    //    printf("%d %d %.8s\n", current->pos, current->size, current->name);
+
+
+    printf("Loaded file %s, %.4s with %d lumps\n", filename, wad->signature, wad->numlumps);
+    return wad;
+
 }
 
-void table_close(wadtable_t* table)
+
+static void wad_loadlumps()
 {
-    free(table->dir);
+    lump_t *current;
+
+    wad->table = calloc(1, sizeof(lump_t));
+
+    current = wad->table;
+
+    fseek(wad->f, wad->offset, SEEK_SET);
+
+
+    for (int i = 0; i < wad->numlumps; i++) {
+        lump_t* tmp = calloc(1, sizeof(lump_t));
+        fread(tmp, 4 + 4 + 8, 1, wad->f);
+        lump_addtotable(wad->table, tmp, 0);
+        free(tmp);
+    }
+
+    //for (int i = 0; i < wad->numlumps; i++) {
+    //    printf("-%d %d %d %.8s %d\n", current, current->pos, current->size, current->name, current->next);
+    //    current = current->next;
+    //}
 }
 
-void t_gettable(FILE** f, wadtable_t* table)
+static void wad_loadmaps()
 {
-    char         type[4];
-    int          pos = 0;
+    lump_t *current;
+    
+    for (current = wad->table; current != NULL; current = current->next) {
+        if (strncmp(current->name, "MAP", 3) == 0) {
+            lump_t *tmp;
+            doomlevel_t *mapdata = calloc(1, sizeof(doomlevel_t));
 
-    table->total = 0;
-    table->dir = NULL;
+            tmp = current->next;
+            for (int i = 0; i < 10; i++) {
+                if (strncmp(tmp->name, "THINGS", 6) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "LINEDEFS", 8) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "SIDEDEFS", 8) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "VERTEXES", 8) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "SEGS", 4) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "SSECTORS", 8) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "NODES", 5) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "SECTORS", 7) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "REJECT", 6) == 0)
+                    goto LUMP_ADD;
+                else if (strncmp(tmp->name, "BLOCKMAP", 8) == 0)
+                    goto LUMP_ADD;
+                else
+                    goto FAIL;
 
-    if (*f == NULL) {
-        fprintf(stderr, "file not found\n");
-        exit(-2);
-    }
+                LUMP_ADD:
+                    mapdata->data[i] = *tmp;
+                    mapdata->data[i].next = NULL;
+                    tmp = tmp->next;
+                    continue;
 
-    fread(type, 4, 1, *f);
-
-    if (strncmp(type, "PWAD", 4)) {
-        fprintf(stderr, "error: wad is corrupt or not pwad\n");
-        return;
-    }
-    fread(&table->total, 4, 1, *f);
-    fread(&pos, 4, 1, *f);
-
-    fseek(*f, pos, SEEK_SET);
-
-    myalloc((lump_t*)&table->dir, sizeof(lump_t) * table->total);
-
-    fseek(*f, pos, SEEK_SET);
-
-    for (int i = 0; i < table->total; i++) {
-        lump_t* op = &table->dir[i];
-        fread(op, 16, 1, *f);
-        if (i > 1 && op->pos != (op-1)->pos + (op-1)->size) {
-            fprintf(stderr, "error: table corruption\n");
-            free(table->dir);
-            exit(-2);
-        }
-        op->ref = *f;
-        op->type = UNDEFINED;
-    }
-
-    t_getmaps(table);
-    t_getmusic(table);
-    t_getrangelumps(table, FLAT);
-    t_getrangelumps(table, SPRITE);
-    t_gettextures(table);
-}
-
-void t_cattable(wadtable_t* dst, wadtable_t* src, int type)
-{
-    if (type) {
-        lump_t start, end;
-
-        start.pos = 0;
-        start.size = 0;
-        start.ref = NULL;
-        start.type = MARKER;
-
-        end.pos = 0;
-        end.size = 0;
-        end.ref = NULL;
-        end.type = MARKER;
-
-        switch (type) {
-        case FLAT:
-            strncpy(start.name, "FF_START", 8);
-            strncpy(end.name, "FF_END", 8);
-            break;
-        case SPRITE:
-            strncpy(start.name, "SS_START", 8);
-            strncpy(end.name, "SS_END", 8);
-            break;
-        default:
-            break;
-        }
-        if (src->total) {
-            t_writetopos(src, &start, 0);
-            t_push(src, &end);
-        }
-    }
-    for (int i = 0; i < src->total; i++) {
-        lump_t* op1 = &src->dir[i];
-        if (!t_exists(dst, op1))
-            t_push(dst, op1);
-    }
-}
-
-void t_getmaps(wadtable_t* table)
-{
-    for (int i = 0; i < table->total; i++) {
-        lump_t* op = &table->dir[i];
-
-        if (name_exist(op->name, &map_order, 10) || (strncmp(op->name, "MAP", 3) == 0 && op->size == 0))
-            op->type = MAP;
-    }
-}
-
-void t_getmusic(wadtable_t* table)
-{
-    for (int i = 0; i < table->total; i++) {
-        lump_t* op = &table->dir[i];
-
-        if (name_exist(op->name, &mus_order, 32))
-            op->type = MUSIC;
-    }
-}
-
-void t_getrangelumps(wadtable_t* table, int apptype)
-{
-    char *markername = NULL,
-          num = 0;
-
-    switch (apptype) {
-    case FLAT:
-        markername = &flatmarkers; num = 8; break;
-    case SPRITE:
-        markername = &spritemarkers; num = 8; break;
-    default:
-        return;
-    }
-
-    for (int i = 0; i < table->total; i++) {
-        lump_t* op = &table->dir[i];
-
-        if (name_exist(op->name, markername, num) && strstr(op->name, "_START") != NULL) {
-            for (int j = i + 1; !name_exist(table->dir[j].name, &markername, num) && strstr(table->dir[j].name, "_END") == NULL; j++) {
-                table->dir[j].type = apptype;
-                table->dir[j + 1].type = MARKER;
+                FAIL:
+                    free(mapdata);
+                    mapdata = NULL;
+                    fprintf(stderr, "Lump %.8s in position %4d is not a map\n", current->name, current->pos);
+                    break;
+            }
+            if (mapdata != NULL) {
+                wad->totalmaps++;
+                mapdata->num = wad->totalmaps;
+                wad->maps = realloc(wad->maps, sizeof(doomlevel_t) * wad->totalmaps);
+                wad->maps[wad->totalmaps - 1] = *mapdata;
+                fprintf(stderr, "Rename %.8s to MAP%.2d\n", current->name, mapdata->num);
+                free(mapdata);
             }
         }
     }
 }
 
-void t_gettextures(wadtable_t* table)
+
+void wad_getmapflats(doomlevel_t *map)
 {
-    for (int i = 0; i < table->total; i++) {
-        lump_t* op = &table->dir[i];
-        if (strncmp(op->name, "TEXTURE1", 8) == 0
-                || strncmp(op->name, "TEXTURE2", 8) == 0) {
-            op->type = TEXTUREx;
-        }
-        if (strncmp(op->name, "PNAMES", 8) == 0) {
-            op->type = PNAMES;
-        }
-    }
-}
+    mapsector_t* buffer;
 
-void t_writetopos(wadtable_t* table, lump_t* lump, int32_t pos)
-{
-    int a = table->total;
-    if (pos < 0 || pos > table->total) {
-        fprintf(stderr, "out of range\n");
-        return;
-    }
-    table->dir = realloc(table->dir, sizeof(lump_t) * (table->total + 1));
-    for (int i = table->total; i > pos; i--)
-        table->dir[i] = table->dir[i - 1];
-    table->dir[pos] = *lump;
-    table->total++;
+    fseek(wad->f, map->data[SECTORS].pos, SEEK_SET);
 
-}
-
-void t_push(wadtable_t* table, lump_t* lump)
-{
-    t_writetopos(table, lump, table->total);
-}
-
-int t_exists(wadtable_t* table, lump_t* lump)
-{
-    if (table->dir == NULL)
-        return 0;
-    for (int i = 0; i < table->total; i++) {
-        if (t_isequal(&table->dir[i], lump))
-            return 1;
-    }
-    return 0;
-}
-
-int t_isflag(lump_t* l)
-{
-    if (name_exist(l->name, &flatmarkers, 8)) {
-        if (strstr(l->name, "_START") != NULL)
-            return 1;
-        else if (strstr(l->name, "_END") != NULL)
-            return 2;
-    }
-    return 0;
-}
-
-void t_initlump(lump_t* l, str8_t name, int32_t pos, int32_t size)
-{
-    strncpy(l->name, name, 8);
-    l->pos = pos;
-    l->size = size;
-    l->ref = NULL;
-    l->type = UNDEFINED;
-}
-
-void t_setmapnum(lump_t* l, int num)
-{
-    sprintf(l->name, "MAP%.2d", num);
-}
-
-void t_setmusname(lump_t* entry, int32_t num)
-{
-    sprintf(entry->name, "%.8s", mus_order[num - 1]);
-}
-
-int t_isequal(lump_t* l1, lump_t* l2)
-{
-    char *buf1 = NULL,
-         *buf2 = NULL;
-
-    if (strncmp(l1->name, l2->name, 8) == 0
-             && l1->size == l2->size) {
-        buf1 = l_load(l1);
-        buf2 = l_load(l2);
-        if (buf1 != NULL && buf2 != NULL && memcmp(&buf1, &buf2, l1->size) == 0) {
-            l_free(buf1);
-            l_free(buf2);
-            return 1;
+    buffer = calloc(1, map->data[SECTORS].size);
+    fread(buffer, map->data[SECTORS].size, 1, wad->f);
+    
+    map->flats = calloc(1, sizeof(lump_t));
+    
+    for (int i = 0; i < (map->data[SECTORS].size / sizeof(mapsector_t)); i++) {
+        /* floors */
+        lump_t* tmp = lump_find(wad->table, buffer[i].floortexture);
+        if (tmp == NULL) {
+            tmp = lump_init(buffer[i].floortexture);
+            lump_addtotable(map->flats, tmp, 1);
+            free(tmp);
         } else {
-            l_free(buf1);
-            l_free(buf2);
-            return 2;
+            lump_addtotable(map->flats, tmp, 1);
+        }
+
+        /* ceilings */
+        tmp = lump_find(wad->table, buffer[i].ceilingtexture);
+        if (tmp == NULL) {
+            tmp = lump_init(buffer[i].ceilingtexture);
+            lump_addtotable(map->flats, tmp, 1);
+            free(tmp);
+        } else {
+            lump_addtotable(map->flats, tmp, 1);
         }
     }
-    return 0;
-
-}
-
-char* l_load(lump_t* l)
-{
-    char* buffer;
-    if (l->ref == NULL) {
-        return NULL;
-    }
-    if ((buffer = malloc(l->size)) == NULL)
-        return NULL;
-    fseek(l->ref, l->pos, SEEK_SET);
-    fread(buffer, l->size, 1, l->ref);
-    return buffer;
-}
-
-void l_write(FILE* fp, lump_t* l)
-{
-    if (l->ref == NULL)
-        return;
-    char* buffer = l_load(l);
-    fseek(fp, 0, SEEK_END);
-    l->pos = ftell(fp);
-    fwrite(buffer, l->size, 1, fp);
-    l_free(buffer);
-}
-
-void l_free(char* buffer)
-{
     free(buffer);
+}
+
+
+
+/* creates an empty lump (marker) */
+
+
+
+static void wad_printmaps()
+{
+    for (int i = 0; i < wad->totalmaps; i++) {
+        fprintf(stderr, "MAP%.2d\n", wad->maps[i].num);
+        for (int j = 0; j < 10; j++)
+            fprintf(stderr, "%9.8s at pos %8d\n", wad->maps[i].data[j].name, wad->maps[i].data[j].pos);
+        for (lump_t* current = wad->maps[i].flats; current != NULL; current = current->next) {
+            fprintf(stderr, "Flat: %.8s\n", current->name);
+        }
+    }
+}
+
+
+void wad_cleanup(wadfile_t *archive)
+{
+    lump_t *current, *tmp;
+
+    //printf("cleanup\n");
+
+    for (int i = 0; i < archive->totalmaps; i++) {
+        for (current = archive->maps[i].flats; current != NULL;) {
+            tmp = current;
+            current = current->next;
+            free(tmp);
+        }
+    }
+    free(archive->maps);
+
+    for (current = archive->table; current != NULL;) {
+        tmp = current;
+        current = current->next;
+        free(tmp);
+    }
+    fclose(archive->f);
+    free(archive);
+    archive = NULL;
 }
