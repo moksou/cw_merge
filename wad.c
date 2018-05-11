@@ -37,40 +37,9 @@ const str8_t mus_order[32] = {
     "D_ULTIMA"
 };
 
-const str8_t map_order[10] = {
-    "THINGS",
-    "LINEDEFS",
-    "SIDEDEFS",
-    "VERTEXES",
-    "SEGS",
-    "SSECTORS",
-    "NODES",
-    "SECTORS",
-    "REJECT",
-    "BLOCKMAP"
-};
-
-const str8_t spritemarkers[8] = {
-    "S_START",
-    "S1_START",
-    "S2_START",
-    "SS_START",
-    "S_END",
-    "S1_END",
-    "S2_END",
-    "SS_END"
-};
-
-const str8_t flatmarkers[8] = {
-    "F_START",
-    "F1_START",
-    "F2_START",
-    "FF_START",
-    "F_END",
-    "F1_END",
-    "F2_END",
-    "FF_END"
-};
+static void wad_loadmaps();
+static void wad_loadlumps();
+static void wad_printmaps();
 
 wadfile_t* wad;
 
@@ -107,27 +76,20 @@ wadfile_t *wad_load(char* filename)
     //for (lump_t* current = wad->table; current != NULL; current = current->next) 
     //    printf("%d %d %.8s\n", current->pos, current->size, current->name);
 
-
     printf("Loaded file %s, %.4s with %d lumps\n", filename, wad->signature, wad->numlumps);
     return wad;
 
 }
 
-
 static void wad_loadlumps()
 {
-    lump_t *current;
-
     wad->table = calloc(1, sizeof(lump_t));
-
-    current = wad->table;
 
     fseek(wad->f, wad->offset, SEEK_SET);
 
-
     for (int i = 0; i < wad->numlumps; i++) {
         lump_t* tmp = calloc(1, sizeof(lump_t));
-        fread(tmp, 4 + 4 + 8, 1, wad->f);
+        fread(tmp, ENTRY_SIZE, 1, wad->f);
         lump_addtotable(wad->table, tmp, 0);
         free(tmp);
     }
@@ -196,7 +158,6 @@ static void wad_loadmaps()
     }
 }
 
-
 void wad_getmapflats(doomlevel_t *map)
 {
     mapsector_t* buffer;
@@ -232,12 +193,6 @@ void wad_getmapflats(doomlevel_t *map)
     free(buffer);
 }
 
-
-
-/* creates an empty lump (marker) */
-
-
-
 static void wad_printmaps()
 {
     for (int i = 0; i < wad->totalmaps; i++) {
@@ -249,7 +204,6 @@ static void wad_printmaps()
         }
     }
 }
-
 
 void wad_cleanup(wadfile_t *archive)
 {

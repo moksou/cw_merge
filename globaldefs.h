@@ -24,17 +24,12 @@
 
 typedef char str8_t[8];
 
-
 typedef struct list
 {
     uint32_t      pos, size;
     str8_t       name;
     struct list     *next;
 } lump_t;
-
-
-
-
 
 typedef struct
 {
@@ -63,7 +58,6 @@ typedef struct
                  middle;
     int16_t      face_id;
 } sidedef_t;
-
 
 typedef struct {
     int16_t      originx,
@@ -109,7 +103,6 @@ typedef struct {
     lump_t        *flats;
 } doomlevel_t;
 
-
 typedef struct {
     FILE         *f;
     char         signature[4];
@@ -133,6 +126,3 @@ enum mapdatalumps {
     BLOCKMAP
 };
 
-extern const str8_t mus_order[32];
-extern const str8_t map_order[10];
-extern const str8_t flatmarkers[];
