@@ -8,5 +8,5 @@ $ ./cw_merge first.wad second.wad result.wad
 ```
 
 # Bugs/limitations
-- Doens't merging anything yet.
+- Doens't merging anything yet. Just showing all maps and all textures/flats in.
 - Not tested in non-Linux OS.
