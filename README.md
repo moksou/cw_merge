@@ -8,6 +8,5 @@ $ ./cw_merge first.wad second.wad result.wad
 ```
 
 # Bugs/limitations
+- Doens't merging anything yet.
 - Not tested in non-Linux OS.
-- IWAD's are not supported. Entirely.
-- Doesn't merge TEXTUREx lumps yet.

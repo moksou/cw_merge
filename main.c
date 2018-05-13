@@ -1,8 +1,6 @@
 #include "globaldefs.h"
 #include "wad.h"
 
-
-
 int main(int argc, char* argv[])
 {
     wadfile_t* wad[argc - 1];

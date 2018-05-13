@@ -24,11 +24,15 @@
 
 typedef char str8_t[8];
 
-typedef struct list
+typedef struct list {
+    void        *data;
+    struct list *next;
+} list_t;
+
+typedef struct
 {
     uint32_t      pos, size;
     str8_t       name;
-    struct list     *next;
 } lump_t;
 
 typedef struct
@@ -67,7 +71,7 @@ typedef struct {
                  colormap;
 } mappatch_t;
 
-typedef struct t {
+typedef struct {
     str8_t       name;
     int16_t      masked,
                  width,
@@ -75,7 +79,6 @@ typedef struct t {
     int32_t      columndirectory;
     int          patchcount;
     mappatch_t   *patches;
-    struct t     *next;
 
 } maptexture_t;
 
@@ -98,9 +101,9 @@ typedef struct {
 typedef struct {
     int32_t        num;
     lump_t         data[10];
-    maptexture_t  *textures;
-    lump_t        *patches;
-    lump_t        *flats;
+    list_t        *textures;
+    list_t        *patches;
+    list_t        *flats;
 } doomlevel_t;
 
 typedef struct {
@@ -109,8 +112,9 @@ typedef struct {
     int32_t      numlumps,
                  offset,
                  totalmaps;
-    lump_t       *table;
+    list_t       *table;
     doomlevel_t  *maps;
+    list_t       *textures;
 } wadfile_t;
 
 enum mapdatalumps {
@@ -126,3 +130,4 @@ enum mapdatalumps {
     BLOCKMAP
 };
 
+#include "misc.h"
