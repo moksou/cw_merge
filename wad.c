@@ -1,8 +1,21 @@
 #include "globaldefs.h"
+#include "misc.h"
 #include "wad.h"
 #include "lump.h"
 #include "textures.h"
-#include "misc.h"
+
+const str8_t map_order[10] = {
+    "THINGS",
+    "LINEDEFS",
+    "SIDEDEFS",
+    "VERTEXES",
+    "SEGS",
+    "SSECTORS",
+    "NODES",
+    "SECTORS",
+    "REJECT",
+    "BLOCKMAP"
+};
 
 const str8_t mus_order[32] = {
     "D_RUNNIN",
@@ -39,11 +52,10 @@ const str8_t mus_order[32] = {
     "D_ULTIMA"
 };
 
-static void wad_loadmaps();
 static void wad_loadlumps();
+static void wad_loadmaps();
 static void wad_printmaps();
-static void wad_getmapflats(doomlevel_t *map);
-static void wad_getmaptextures(doomlevel_t *map);
+void wad_getmapgraphics(doomlevel_t *map);
 
 wadfile_t* wad;
 
@@ -52,10 +64,9 @@ wadfile_t *wad_create()
     wadfile_t *target = calloc(1, sizeof(wadfile_t));
 
     target->f = NULL;
-    strncpy(target->signature, "PWAD", 4);
+    memcpy(target->signature, "PWAD", 4);
     target->numlumps = 0;
     target->offset = 0;
-    target->totalmaps = 0;
     return target;
 }
 
@@ -64,9 +75,8 @@ wadfile_t *wad_load(char* filename)
     wad = calloc(1, sizeof(wadfile_t));
     wad->totalmaps = 0;
     wad->maps = NULL;
-    wad->table = NULL;
+    wad->table = lt_init();
     wad->textures = NULL;
-    //wad->textures->next = NULL;
 
     wad->f = fopen(filename, "rb");
     if (wad->f == NULL) {
@@ -99,13 +109,16 @@ wadfile_t *wad_load(char* filename)
     
     wad_loadlumps();
     wad_loadmaps();
-
-    for (int i = 0; i < wad->totalmaps; i++) {
-        wad_getmapflats(&wad->maps[i]);
-        wad_getmaptextures(&wad->maps[i]);
-    }
-
+    for (int i = 0; i < wad->totalmaps; i++)
+        wad_getmapgraphics(&wad->maps[i]);
+    tx_loadpnames(wad);
+    tx_loadtextures(wad);
     wad_printmaps();
+    
+    for (int i = 0; i < wad->table->num; i++)
+        printf("%4.4d %4.4d %.8s\n", wad->table->lump[i].pos,
+                                     wad->table->lump[i].size,
+                                     wad->table->lump[i].name);
 
     printf("Loaded file %s, %.4s with %d lumps\n", filename, wad->signature, wad->numlumps);
     return wad;
@@ -114,175 +127,125 @@ wadfile_t *wad_load(char* filename)
 
 static void wad_loadlumps()
 {
-    wad->table = list_init(sizeof(lump_t));
+    lump_t entry;
+
     fseek(wad->f, wad->offset, SEEK_SET);
 
     for (int i = 0; i < wad->numlumps; i++) {
-        lump_t tmp;
-        fread(&tmp, ENTRY_SIZE, 1, wad->f);
-        list_add(wad->table, &tmp, sizeof(lump_t), 0);
+        fread(&entry, ENTRY_SIZE, 1, wad->f);
+        entry.f = wad->f;
+        
+        lt_push(wad->table, &entry, 0);
     }
 
+    entry.pos = 0;
+    entry.size = 0;
+    strncpy(entry.name, "TEST", 8);
 
-    //for (list_t *current = wad->table; current != NULL; current = current->next) {
-    //    lump_t* lump = current->data;
-    //    printf("%p %9d %9d %8.8s %p\n", current, lump->pos, lump->size, lump->name, current->next);
-    //}
 }
-
 
 static void wad_loadmaps()
 {
-    list_t *current;
-    lump_t *entry;
-    
-    for (current = wad->table; current != NULL; current = current->next) {
-        entry = current->data;
-        if (strncmp(entry->name, "MAP", 3) == 0) {
-            list_t* rover;
-            lump_t *tmp;
-            doomlevel_t *mapdata = calloc(1, sizeof(doomlevel_t));
+    wad->maps = calloc(1, sizeof(doomlevel_t));
 
-            rover = current->next;
-            tmp = rover->data;
-            for (int i = 0; i < 10; i++) {
-                if (strncmp(tmp->name, "THINGS", 6) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "LINEDEFS", 8) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "SIDEDEFS", 8) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "VERTEXES", 8) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "SEGS", 4) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "SSECTORS", 8) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "NODES", 5) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "SECTORS", 7) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "REJECT", 6) == 0)
-                    goto LUMP_ADD;
-                else if (strncmp(tmp->name, "BLOCKMAP", 8) == 0)
-                    goto LUMP_ADD;
-                else
-                    goto FAIL;
+    for (uint32_t i = 0; i < wad->table->num; i++) {
+        //printf("lump: %.8s\n", wad->table->lump[i].name);
+        if (strncmp(wad->table->lump[i].name, "MAP", 3) == 0) {
+            //printf("found map %.8s\n", wad->table->lump[i].name);
+            int j;
+            doomlevel_t *map = calloc(1, sizeof(doomlevel_t));
+            map->data = lt_init();
 
-                LUMP_ADD:
-                    memcpy(&mapdata->data[i], tmp, sizeof(lump_t));
-                    rover = rover->next;
-                    tmp = rover->data;
-                    continue;
-
-                FAIL:
-                    free(mapdata);
-                    mapdata = NULL;
-                    fprintf(stderr, "Lump %.8s in position %4d is not a map\n", entry->name, entry->pos);
+            for (j = 1; j <= 10; j++) 
+                if (strncmp(wad->table->lump[i + j].name, map_order[j - 1], 8) != 0)
                     break;
+
+            if (j < 10)
+                continue; /* lump is not a map */
+
+            for (j = 1; j <= 10; j++) {
+                //printf("catch lump %.8s\n", wad->table->lump[i + 1].name);
+                lt_push(map->data, &wad->table->lump[i + 1], 0);
+                lt_delete(wad->table, i + 1);
             }
-            if (mapdata != NULL) {
-                wad->totalmaps++;
-                mapdata->num = wad->totalmaps;
-                wad->maps = realloc(wad->maps, sizeof(doomlevel_t) * wad->totalmaps);
-                wad->maps[wad->totalmaps - 1] = *mapdata;
-                fprintf(stderr, "Rename %.8s to MAP%.2d\n", entry->name, mapdata->num);
-                free(mapdata);
-            }
+            wad->totalmaps++;
+            wad->maps = realloc(wad->maps, sizeof(doomlevel_t) * wad->totalmaps);
+            wad->maps[wad->totalmaps - 1] = *map;
+            free(map);
+            lt_delete(wad->table, i);
         }
     }
 }
 
-void wad_getmapflats(doomlevel_t *map)
+
+
+void wad_getmapgraphics(doomlevel_t *map)
 {
-    mapsector_t* sector;
+    sidedef_t *sidedef = calloc(1, sizeof(sidedef_t) * map->data->lump[2].size);
+    mapsector_t *sector = calloc(1, sizeof(mapsector_t) * map->data->lump[7].size);
 
-    fseek(wad->f, map->data[SECTORS].pos, SEEK_SET);
+    fseek(wad->f, map->data->lump[2].pos, SEEK_SET);
+    fread(sidedef, map->data->lump[2].size, 1, wad->f);
 
-    sector = calloc(1, map->data[SECTORS].size);
-    fread(sector, map->data[SECTORS].size, 1, wad->f);
+    fseek(wad->f, map->data->lump[7].pos, SEEK_SET);
+    fread(sector, map->data->lump[7].size, 1, wad->f);
     
-    map->flats = list_init();
+    map->textures = array_init();
+    map->flats = array_init();
     
-    for (int i = 0; i < (map->data[SECTORS].size / sizeof(mapsector_t)); i++) {
-        lump_t *floor = lump_find(wad->table, sector[i].floortexture);
-        if (floor == NULL) {
-            floor = lump_init(sector[i].floortexture);
-            lump_add(map->flats, floor, 1);
-            free(floor);
-        } else {
-            lump_add(map->flats, floor, 1);
-        }
-        lump_t *ceiling = lump_find(wad->table, sector[i].ceilingtexture);
-        if (ceiling == NULL) {
-            ceiling = lump_init(sector[i].ceilingtexture);
-            lump_add(map->flats, ceiling, 1);
-            free(ceiling);
-        } else {
-            lump_add(map->flats, ceiling, 1);
-        }
+    for (int i = 0; i < (map->data->lump[2].size / sizeof(sidedef_t)); i++) {
+        array_add(map->textures, sidedef[i].lower, 0, 1);
+        array_add(map->textures, sidedef[i].middle, 0, 1);
+        array_add(map->textures, sidedef[i].upper, 0, 1);
     }
-    free(sector);
-}
-
-void wad_getmaptextures(doomlevel_t *map)
-{
-    sidedef_t* sidedef;
-    maptexture_t* tmp;
-
-    fseek(wad->f, map->data[SIDEDEFS].pos, SEEK_SET);
-
-    sidedef = calloc(1, map->data[SIDEDEFS].size);
-    fread(sidedef, map->data[SIDEDEFS].size, 1, wad->f);
     
-    map->textures = list_init();
-    
-    for (int i = 0; i < (map->data[SIDEDEFS].size / sizeof(sidedef_t)); i++) {
-        tmp = tx_find(wad->textures, sidedef[i].lower);
-        if (tmp == NULL) {
-            tmp = tx_init(sidedef[i].lower);
-            //printf("%.8s\n", tmp->name);
-            tx_add(map->textures, tmp, 1);
-            free(tmp);
-        } else {
-            tx_add(map->textures, tmp, 1);
-        }
-        tmp = tx_find(wad->textures, sidedef[i].middle);
-        if (tmp == NULL) {
-            tmp = tx_init(sidedef[i].middle);
-            //printf("%.8s\n", tmp->name);
-            tx_add(map->textures, tmp, 1);
-            free(tmp);
-        } else {
-            tx_add(map->textures, tmp, 1);
-        }
-        tmp = tx_find(wad->textures, sidedef[i].upper);
-        if (tmp == NULL) {
-            tmp = tx_init(sidedef[i].upper);
-            //printf("%.8s\n", tmp->name);
-            tx_add(map->textures, tmp, 1);
-            free(tmp);
-        } else {
-            tx_add(map->textures, tmp, 1);
-        }
+    for (int i = 0; i < (map->data->lump[7].size / sizeof(mapsector_t)); i++) {
+        array_add(map->flats, sector[i].floortexture, 0, 1);
+        array_add(map->flats, sector[i].ceilingtexture, 0, 1);
     }
+
     free(sidedef);
+    free(sector);
 }
 
 static void wad_printmaps()
 {
+    if (0) {
     for (int i = 0; i < wad->totalmaps; i++) {
-        fprintf(stderr, "MAP%.2d\n", wad->maps[i].num);
-        for (int j = 0; j < 10; j++)
-            fprintf(stderr, "%9.8s at pos %8d\n", wad->maps[i].data[j].name, wad->maps[i].data[j].pos);
-        for (list_t* current = wad->maps[i].textures; current != NULL; current = current->next) {
-            maptexture_t *entry = current->data;
-            fprintf(stderr, "Texture: %.8s\n", entry->name);
+        lumptable_t *entry = wad->maps[i].data;
+        for (int j = 0; j < 10; j++) {
+            printf("MAP %d: %4.4d %4.4d %.8s\n", i, entry->lump[j].pos, entry->lump[j].size, entry->lump[j].name);
         }
-        for (list_t* current = wad->maps[i].flats; current != NULL; current = current->next) {
-            lump_t *entry = current->data;
-            fprintf(stderr, "Flat: %9.8s at pos %9.8d\n", entry->name, entry->pos);
+        printf("Textures:\n");
+        for (int k = 0; k < wad->maps[i].textures->num; k++) {
+            printf("%.8s ", wad->maps[i].textures->string[k]);
         }
+        printf("\n");
+        printf("Flats\n");
+        for (int k = 0; k < wad->maps[i].flats->num; k++) {
+            printf("%.8s ", wad->maps[i].flats->string[k]);
+        }
+        printf("\n");
+    }
+    }
+    if (0) {
+    for (int i = 0; i < wad->maps->flats->num; i++)
+        printf("FLAT %.8s\n", wad->maps->flats->string[i]);
+    }
+    if (0) {
+    for (list_t *current = wad->textures; current != NULL; current = current->next) {
+        maptexture_t *entry = current->data;
+        printf("%.8s:", entry->name);
+        for (int i = 0 ; i < entry->patchcount; i++) {
+            printf("%.8s ", tx_getpatchname(wad->patches, &entry->patches[i]));
+        }
+        printf("\n");
+    }
+    }
+    if (0) {
+    for (int i = 0; i < wad->patches->num; i++) {
+        printf("%.8s\n", wad->patches->string[i]);
+    }
     }
 }
 
@@ -291,15 +254,19 @@ void wad_cleanup(wadfile_t *archive)
     if (archive == NULL)
         return;
     
-
+    if (wad->textures)
+        tx_cleanup(archive->textures);
     if (archive->maps) {
         for (int i = 0; i < wad->totalmaps; i++) {
-            list_cleanup(archive->maps[i].textures);
-            list_cleanup(archive->maps[i].flats);
+            lt_cleanup(archive->maps[i].data);
+            array_cleanup(archive->maps[i].textures);
+            array_cleanup(archive->maps[i].flats);
         }
         free(archive->maps);
     }
-    list_cleanup(wad->table);
+
+    array_cleanup(wad->patches);
+    lt_cleanup(wad->table);
 
     if (archive->f)
         fclose(archive->f);

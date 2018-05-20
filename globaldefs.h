@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <malloc.h>
+#include <unistd.h>
 
 #define ENTRY_SIZE 16
 
@@ -29,11 +30,24 @@ typedef struct list {
     struct list *next;
 } list_t;
 
+typedef struct {
+    int32_t     num;
+    str8_t      *string;
+} array_t;
+
 typedef struct
 {
-    uint32_t      pos, size;
+    uint32_t     pos, size;
     str8_t       name;
+    FILE         *f;
 } lump_t;
+
+typedef struct
+{
+    int32_t     num;
+    lump_t      *lump;
+} lumptable_t;
+
 
 typedef struct
 {
@@ -73,11 +87,11 @@ typedef struct {
 
 typedef struct {
     str8_t       name;
-    int16_t      masked,
-                 width,
+    int32_t      masked;
+    int16_t      width,
                  height;
     int32_t      columndirectory;
-    int          patchcount;
+    int16_t      patchcount;
     mappatch_t   *patches;
 
 } maptexture_t;
@@ -93,17 +107,10 @@ typedef struct {
 } mapsector_t;
 
 typedef struct {
-    int32_t       numtextures;
-    int32_t*      offset;
-    maptexture_t* mtexture;
-} texturex_t;
-
-typedef struct {
     int32_t        num;
-    lump_t         data[10];
-    list_t        *textures;
-    list_t        *patches;
-    list_t        *flats;
+    lumptable_t   *data;
+    array_t       *textures,
+                  *flats;
 } doomlevel_t;
 
 typedef struct {
@@ -112,22 +119,10 @@ typedef struct {
     int32_t      numlumps,
                  offset,
                  totalmaps;
-    list_t       *table;
+    lumptable_t  *table;
     doomlevel_t  *maps;
     list_t       *textures;
+    array_t      *patches;
 } wadfile_t;
-
-enum mapdatalumps {
-    THINGS = 0,
-    LINEDEFS,
-    SIDEDEFS,
-    VERTEXES,
-    SEGS,
-    SSECTORS,
-    NODES,
-    SECTORS,
-    REJECT,
-    BLOCKMAP
-};
 
 #include "misc.h"

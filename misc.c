@@ -48,11 +48,27 @@ void list_add(list_t *list, void *item, size_t itemsize, int dup)
         }
     }
     
-
-    
-
-    //printf("---%.8s\n", &list->data[8]);
 }
+
+void list_delete(list_t *list, list_t *item, size_t itemsize)
+{
+    list_t *current;
+
+    if (memcmp(list->data, item->data, itemsize) == 0) {
+        printf("test\n");
+        list = list->next;
+    }
+    for (current = list; current->next != NULL; current = current->next) {
+        list_t *next = current->next;
+        //printf("test\n");
+        if (memcmp(next->data, item->data, itemsize) == 0) {
+            current->next = next->next;
+            //free(next->data);
+            //free(next);
+        }
+    }
+}
+
 
 
 void list_cleanup(list_t* list)
@@ -66,7 +82,38 @@ void list_cleanup(list_t* list)
         free(tmp);
     }
 }
-        
+
+array_t *array_init()
+{
+    array_t *arr = calloc(1, sizeof(array_t));
+    return arr;
+}
+
+void array_add(array_t *arr, str8_t str, uint32_t index, int dup)
+{
+    if (index > arr->num)
+        return;
+    
+    if (dup) {
+        for (size_t i = 0; i < arr->num; i++) {
+            if (strncmp(arr->string[i], str, sizeof(str8_t)) == 0)
+                return;
+        }
+    }
+
+    arr->string = realloc(arr->string, sizeof(str8_t) * (arr->num + 1));
+    memmove(&arr->string[index + 1], &arr->string[index], sizeof(str8_t) * (arr->num - index));
+
+    strncpy(arr->string[index], str, 8);
+    arr->num++;
+}
+
+
+void array_cleanup(array_t *arr)
+{
+    free(arr->string);
+    free(arr);
+}
 
 int myalloc(void** pointer, size_t size)
 {
